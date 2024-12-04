@@ -36,6 +36,11 @@ app.use(
 // middleware to handle json
 app.use(express.json());
 
+console.log("Client: ", process.env.CLIENT_URL);
+console.log("Cloudinary Name: ", process.env.CLOUDINARY_NAME);
+console.log("Cloudinary API: ", process.env.CLOUDINARY_API_KEY);
+console.log("Cloudinary Secret:  ", process.env.CLOUDINARY_API_SECRET);
+
 // CORS
 // app.use(
 //   cors({
