@@ -18,6 +18,7 @@ cloudinary.config({
 
 const app = express();
 
+app.use(cors());
 // For handling cookies
 app.use(cookieParser());
 
@@ -40,14 +41,6 @@ console.log("Client: ", process.env.CLIENT_URL);
 console.log("Cloudinary Name: ", process.env.CLOUDINARY_NAME);
 console.log("Cloudinary API: ", process.env.CLOUDINARY_API_KEY);
 console.log("Cloudinary Secret:  ", process.env.CLOUDINARY_API_SECRET);
-
-// CORS
-// app.use(
-//   cors({
-//     origin: process.env.CLIENT_URL,
-//     credentials: true,
-//   })
-// );
 
 // use express router
 app.use("/", require("./routes"));
