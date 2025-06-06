@@ -1,0 +1,389 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation Template for Term-Project.
+
+Parameters:
+  cloud:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: Must be the name of an existing EC2 KeyPair.
+
+Resources:
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: MyVPC
+
+  MyInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: MyInternetGateway
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref MyInternetGateway
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: PublicSubnet1
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: 10.0.2.0/24
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: PublicSubnet2
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: 10.0.3.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: PrivateSubnet1
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: 10.0.4.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: PrivateSubnet2
+
+  PrivateSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: 10.0.5.0/24
+      AvailabilityZone: !Select [2, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: PrivateSubnet3
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: PublicRouteTable
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref MyInternetGateway
+
+  PublicSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: PrivateRouteTable
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref MyNATGateway
+
+  PrivateSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnetRouteTableAssociation3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet3
+      RouteTableId: !Ref PrivateRouteTable
+
+  MyElasticIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: MyElasticIP
+
+  MyNATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt MyElasticIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Name
+          Value: MyNATGateway
+
+  FrontendSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow HTTP and SSH access for Frontend
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  BackendSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow Backend communication
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 4000
+          ToPort: 4000
+          SourceSecurityGroupId: !Ref BackendALBSG
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  DatabaseSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow Database access from Backend
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 27017
+          ToPort: 27017
+          SourceSecurityGroupId: !Ref BackendSG
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+  
+  BackendALBSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Backend Load Balancer
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: BackendALBSG
+
+  BackendTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: BackendTargetGroup
+      Protocol: HTTP
+      Port: 4000
+      VpcId: !Ref MyVPC
+      TargetType: instance
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /
+      Tags:
+        - Key: Name
+          Value: BackendTargetGroup
+        
+  BackendAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn:
+      - BackendLaunchConfiguration
+    Properties:
+      VPCZoneIdentifier:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      LaunchConfigurationName: !Ref BackendLaunchConfiguration
+      MinSize: 1
+      MaxSize: 5
+      DesiredCapacity: 2
+      TargetGroupARNs:
+        - !Ref BackendTargetGroup
+      Tags:
+        - Key: Name
+          Value: BackendAutoScalingGroup
+          PropagateAtLaunch: true
+
+  BackendLaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    DependsOn:
+      - DatabaseEC2Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-0453ec754f44f9a4a
+      SecurityGroups:
+        - !Ref BackendSG
+      KeyName: !Ref cloud
+      UserData:
+        Fn::Base64: !Sub 
+        - |
+          #!/bin/bash
+          sudo yum update -y
+          sudo yum install docker -y
+          sudo systemctl start docker
+          sudo systemctl enable docker
+          sudo usermod -aG docker ec2-user
+          sleep 10
+          echo "Fetching Cloudinary credentials..."
+          SECRET=$(aws secretsmanager get-secret-value --secret-id arn:aws:secretsmanager:us-east-1:004358744757:secret:CloudinaryCredentials-8W7PTb --query SecretString --output text)
+          CLOUDINARY_NAME=$(echo $SECRET | jq -r '.CLOUDINARY_NAME')
+          CLOUDINARY_API_KEY=$(echo $SECRET | jq -r '.CLOUDINARY_API_KEY')
+          CLOUDINARY_API_SECRET=$(echo $SECRET | jq -r '.CLOUDINARY_API_SECRET')
+          echo "Pulling Docker image..."
+          sudo docker pull kp6657/airbnb-backend:latest
+          echo "Running Docker container..."
+          sudo docker run -d -p 4000:4000 -e PORT=4000 -e DB_URL=mongodb://${DatabaseIP}:27017/airbnb -e JWT_SECRET=khushpatel -e CLOUDINARY_NAME=CLOUDINARY_NAME -e CLOUDINARY_API_KEY=CLOUDINARY_API_KEY -e CLOUDINARY_API_SECRET=CLOUDINARY_API_SECRET -e JWT_EXPIRY=20d -e COOKIE_TIME=7 -e SESSION_SECRET=khushpatel2510 --name airbnb-backend kp6657/airbnb-backend:latest
+        - DatabaseIP: !GetAtt DatabaseEC2Instance.PrivateIp
+
+  BackendListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    DependsOn:
+      - BackendLoadBalancer
+      - BackendTargetGroup
+    Properties:
+      LoadBalancerArn: !Ref BackendLoadBalancer
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref BackendTargetGroup
+
+  BackendLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: BackendLoadBalancer
+      Scheme: internet-facing
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      SecurityGroups:
+        - !Ref BackendALBSG
+      Tags:
+        - Key: Name
+          Value: BackendLoadBalancer
+
+  DatabaseEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      KeyName: !Ref cloud
+      SubnetId: !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref DatabaseSG
+      ImageId: ami-0453ec754f44f9a4a
+      Tags:
+        - Key: Name
+          Value: DatabaseEC2Instance
+      BlockDeviceMappings:
+      - DeviceName: /dev/xvdf
+        Ebs:
+          VolumeSize: 15  
+          VolumeType: gp3 
+          DeleteOnTermination: false 
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          sudo yum update -y
+          echo "[mongodb-org-8.0]
+          name=MongoDB Repository
+          baseurl=https://repo.mongodb.org/yum/amazon/2023/mongodb-org/8.0/x86_64/
+          gpgcheck=1
+          enabled=1
+          gpgkey=https://pgp.mongodb.com/server-8.0.asc" | sudo tee /etc/yum.repos.d/mongodb-org-8.0.repo
+          sudo yum install -y mongodb-org mongodb-mongosh-shared-openssl3 openssl mongodb-org-database-tools-extra mongodb-database-tools \
+          mongodb-org-tools mongodb-org-server mongodb-org-mongos mongodb-org-database
+          sudo systemctl start mongod
+          sudo systemctl enable mongod
+          mongod --version
+          echo "Formatting EBS volume..."
+          sudo mkfs.ext4 /dev/xvdf
+          sudo mkdir -p /data/db
+          sudo mount /dev/xvdf /data/db
+          echo "/dev/xvdf /data/db ext4 defaults,nofail 0 2" | sudo tee -a /etc/fstab
+          sudo chown -R mongod:mongod /data/db
+          sudo chmod -R 755 /data/db
+          sudo sed -i 's|dbPath: /var/lib/mongo|dbPath: /data/db|' /etc/mongod.conf
+          sudo sed -i 's/bindIp: 127.0.0.1/bindIp: 0.0.0.0/' /etc/mongod.conf
+          sudo systemctl restart mongod
+          
+  FrontendEC2Instance:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - BackendListener
+      - BackendLoadBalancer
+    Properties:
+      InstanceType: t2.micro
+      KeyName: cloud
+      SubnetId: !Ref PublicSubnet2
+      SecurityGroupIds:
+        - !Ref FrontendSG
+      ImageId: ami-0453ec754f44f9a4a
+      Tags:
+        - Key: Name
+          Value: FrontendEC2Instance
+      UserData: 
+        Fn::Base64: !Sub 
+        - |
+          #!/bin/bash
+          sudo yum update -y
+          sudo yum install -y git  
+          git clone https://github.com/khushpatel25/cloud-airbnb.git
+          cd cloud-airbnb/client
+          sudo yum install docker -y
+          sudo systemctl start docker
+          sudo systemctl enable docker
+          sudo usermod -aG docker ec2-user
+          sleep 10
+          echo "Building the image..."
+          docker build --build-arg VITE_BASE_URL=http://${BackendLoadBalancerDNS} --build-arg VITE_GOOGLE_CLIENT_ID=135031219601-8psjpgmg4up0a5e81o49ou4h31akgasm.apps.googleusercontent.com -t airbnb-frontend .
+          echo "Running the container..."
+          docker run -d --name airbnb-frontend -p 3000:80 airbnb-frontend
+        - BackendLoadBalancerDNS: !GetAtt BackendLoadBalancer.DNSName
