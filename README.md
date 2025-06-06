@@ -1,107 +1,123 @@
-# Airbnb Clone
+# 🏡 Airbnb-Clone on AWS — Scalable Cloud Architecture
 
-## Overview
+## 📌 Overview
+This project deploys a full-stack open-source Airbnb-clone web application using a highly available, secure, and cost-optimized architecture on AWS. The application is based on React (frontend) and Node.js/Express (backend), with MongoDB as the database. Infrastructure provisioning is managed via AWS CloudFormation.
 
-This project is a full-stack web application developed as a clone of Airbnb using the MERN stack (MongoDB, Express.js, React.js, Node.js). It aims to replicate the core functionality of Airbnb, allowing users to search for accommodations, view details, make bookings, and manage their listings.
+---
 
-## Getting Started
+## 🚀 Key Features
+- ✅ Frontend and backend hosted on separate EC2 instances
+- ✅ Backend Auto Scaling group with Elastic Load Balancer
+- ✅ Secure self-hosted MongoDB with EBS
+- ✅ Infrastructure as Code using AWS CloudFormation
+- ✅ Secrets managed via AWS Secrets Manager
+- ✅ Follows AWS Well-Architected Framework (Security, Reliability, Performance, Cost, Ops)
 
-1. **Clone the Repository:**
+---
 
+## 🧱 Architecture
+
+## 🖼️ Architecture Diagrams
+
+### 🔸 Architecture Diagram
+![Architecture Diagram](/images/Architecture.png)
+
+### 🔸 VPC and Subnet Overview
+![VPC Overview](/images//vpc.png)
+
+### 🔸 Application Load Balancer (ALB)
+![ALB Setup](/images/ALB.png)
+![ALB Config](/images/ALB-config.png)
+
+### 🔸 Backend Auto Scaling Group (ASG)
+![Auto Scaling Group](/images/ASG.png)
+
+### AWS Services Used:
+
+| Category     | Services                                          |
+|--------------|---------------------------------------------------|
+| Compute      | EC2, EC2 Auto Scaling                             |
+| Storage      | Elastic Block Store (EBS)                         |
+| Networking   | VPC, Internet Gateway, NAT Gateway, ELB           |
+| Database     | Self-hosted MongoDB on EC2                        |
+| Management   | AWS CloudFormation                                |
+| Security     | AWS Secrets Manager, Security Groups              |
+
+---
+
+## 🔄 Application Flow
+
+1. **User Access**: Users interact with the frontend hosted on a public EC2 instance.
+2. **Frontend to Backend**: Requests route through an Application Load Balancer to backend EC2 instances (auto-scaled).
+3. **Data Handling**: Backend interacts with a MongoDB instance hosted on a private EC2 with persistent EBS volume.
+4. **Secrets Management**: Sensitive configurations like API keys are securely retrieved from AWS Secrets Manager.
+5. **Backend Internet Access**: NAT Gateway enables backend EC2s in private subnets to access the internet for package updates.
+
+---
+
+## 🧰 Infrastructure as Code (IaC)
+
+Provisioned using a single CloudFormation template that includes:
+
+- VPC with public and private subnets
+- Internet and NAT gateways
+- Security groups for different components
+- EC2 Launch Configuration and Auto Scaling Group
+- Application Load Balancer and Target Group
+- MongoDB EC2 instance with EBS volume
+- Scripts to automate Docker container deployments
+
+---
+
+## 🛡️ Well-Architected Framework Alignment
+
+### 🔐 Security
+- Private subnets for backend and database
+- Secrets stored securely in AWS Secrets Manager
+- Security groups restrict traffic based on role
+
+### 💡 Reliability
+- Multi-AZ setup with Auto Scaling ensures high availability
+- Health checks and failover support through ALB
+
+### ⚡ Performance Efficiency
+- Optimized EC2 instance types
+- Localized communication within private subnets
+
+### 💸 Cost Optimization
+- On-demand and scalable infrastructure
+- Infrastructure automation reduces manual ops overhead
+
+### 📈 Operational Excellence
+- Fully automated provisioning using CloudFormation
+- Docker-based microservices simplify deployment and rollback
+
+---
+
+## 📦 Deployment
+
+1. Clone the project:
    ```bash
-   git clone https://github.com/rahul4019/airbnb-clone.git
-
+   git clone https://github.com/khushpatel25/cloud-airbnb
    ```
 
-2. **Install dependencies:**
+2. Launch CloudFormation template:
+   - Deploy the infrastructure using the `cloudFormation.yaml` file.
+   - It includes VPC, subnets, EC2 setup, ALB, Auto Scaling, and Secrets Manager integration.
 
-   Navigate to client directory and install frontend dependencies using yarn
-
-   ```
-   yarn install
-   ```
-
-   Similary navigate to api folder and install backend dependencies
-
-   ```
-   yarn install
+3. SSH into frontend/backend EC2 instances (if needed) and verify Docker containers are running:
+   ```bash
+   docker ps
    ```
 
-3. **ENV variables:**
+4. Access the application via frontend public IP.
 
-   - create .env file in the client folder and add these variables
+---
 
-     #### VITE_BASE_URL= http://localhost:4000
+## 📎 References
 
-     #### VITE_GOOGLE_CLIENT_ID= your google client id
+- [AWS EC2 Docs](https://docs.aws.amazon.com/ec2/)
+- [AWS CloudFormation Docs](https://docs.aws.amazon.com/cloudformation/)
+- [Secrets Manager](https://docs.aws.amazon.com/secretsmanager/)
+- [MongoDB on EC2](https://medium.com/@pnle/install-standalone-mongodb-community-edition-on-aws-ec2-c3ced446370b)
 
-   - create .env file in the api folder and add these variables
-
-     #### PORT= 4000
-
-     #### DB_URL= your db url
-
-     #### JWT_SECRET= your secret (string)
-
-     #### JWT_EXPIRY= 20d
-
-     #### COOKIE_TIME= 7
-
-     #### SESSION_SECRET= your secret session (string)
-
-     #### CLOUDINARY_NAME= your secret session
-
-     #### CLOUDINARY_API_KEY= your cloudinary key
-
-     #### CLOUDINARY_API_SECRET= your cloudinary api secret
-
-     #### CLIENT_URL= http://localhost:5173
-
-4. **Run project:**
-   - Open terminal, navigate to client directory and run below command to start frontend
-   ```
-       yarn run dev
-   ```
-   - Open another terminal, navigate to api directory and run this command to start backend server
-   ```
-       yarn start
-   ```
-
-## Features
-
-- **User Authentication:** Users can sign up, log in, and log out securely. Passwords are hashed for security.
-- **Google Login:** Users can sign up and log in using their gmail.
-
-  ![Airbnb Logo](client/public/assets/auth.png)
-
-- **Search Listings:** Users can search for accommodations.
-
-  ![Airbnb Logo](client/public/assets/search.png)
-
-- **View Listings:** Users can view detailed information about each accommodation, including photos, descriptions, amenities.
-
-  ![Airbnb Logo](client/public/assets/view.png)
-
-- **Make Bookings:** Authenticated users can book accommodations for specific dates.
-
-  ![Airbnb Logo](client/public/assets/book.png)
-
-- **Manage Listings:** Hosts can create, edit, and delete their listings.
-
-  ![Airbnb Logo](client/public/assets/manage.png)
-
-- **Responsive Design:** The application is designed to be responsive and work seamlessly across different devices.
-
-  ![Airbnb Logo](client/public/assets/hero.png)
-
-## Technologies Used
-
-- **MongoDB:** NoSQL database for storing user data, listings.
-- **Express.js:** Web application framework for building the backend server.
-- **React.js:** JavaScript library for building the user interface.
-- **Node.js:** JavaScript runtime environment for executing server-side code.
-- **Tailwind CSS:** A utility-first CSS framework
-- **Shadcn:** UI library for styling based on Tailwind CSS
-- **JWT:** JSON Web Tokens for secure user authentication.
-- **Cloudinary:** Cloud-based image management for storing and serving images.
-- **Google Cloud:** For gmail based authentication
